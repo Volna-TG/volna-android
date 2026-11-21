@@ -1,0 +1,26 @@
+name: Android
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;27.2.12479018"
+      - run: rustup target add aarch64-linux-android x86_64-linux-android
+      - run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018" bash native-core/build-android.sh
+      - run: |
+          mkdir -p build/tests
+          javac -d build/tests app/src/main/java/app/volna/TgWebMsgSplitter.java tests/FramingTest.java
+          java -cp build/tests app.volna.FramingTest
+      - run: ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: volna-debug
+          path: app/build/outputs/apk/debug/*.apk
