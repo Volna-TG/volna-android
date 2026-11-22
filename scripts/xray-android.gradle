@@ -1,0 +1,65 @@
+def xrayVersion = 'v26.10.31'
+def xrayPackages = [
+    'arm64-v8a': ['Xray-android-arm64-v8a.zip', 'ee7878bb47ce28ff5b068e2d173ba1a9fab20ca1aec94191644919ec08ba5f1d'],
+    'x86_64': ['Xray-android-amd64.zip', '077f2f768de2356cea4a32598d333837fe0fa33ab540c4d508d9f17e2eb9e5b4']
+]
+def cacheDir = rootProject.file('.xray-cache')
+def generatedJni = layout.buildDirectory.dir('generated/xray/jniLibs')
+android.sourceSets.main.jniLibs.srcDir(generatedJni)
+
+def digest = { File f ->
+    def md = java.security.MessageDigest.getInstance('SHA-256')
+    f.withInputStream { stream ->
+        byte[] buf = new byte[65536]
+        int n
+        while ((n = stream.read(buf)) != -1) md.update(buf, 0, n)
+    }
+    md.digest().encodeHex().toString()
+}
+def prepareXray = tasks.register('prepareXrayAndroid') {
+    outputs.dir(generatedJni)
+    inputs.property('release', xrayVersion)
+    inputs.property('packages', xrayPackages.toString())
+    doLast {
+        cacheDir.mkdirs()
+        xrayPackages.each { abi, entry ->
+            String filename = entry[0]
+            String sha = entry[1]
+            File homeDownload = new File(System.getProperty('user.home'), 'Downloads/' + filename)
+            File local = rootProject.file(filename)
+            File cached = new File(cacheDir, filename)
+            File archive = [local, homeDownload, cached].find { it.isFile() && digest(it) == sha }
+            if (archive == null) {
+                String url = "https://github.com/XTLS/Xray-core/releases/download/${xrayVersion}/${filename}"
+                File partial = new File(cacheDir, filename + '.part')
+                try {
+                    logger.lifecycle("Downloading ${filename}")
+                    def conn = new URL(url).openConnection()
+                    conn.connectTimeout = 15000
+                    conn.readTimeout = 60000
+                    conn.setRequestProperty('User-Agent', 'Volna-Android-Build')
+                    conn.inputStream.withCloseable { input -> partial.withOutputStream { output -> output << input } }
+                    if (digest(partial) != sha) throw new GradleException('SHA-256 mismatch: ' + filename)
+                    java.nio.file.Files.move(partial.toPath(), cached.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    archive = cached
+                } catch (Exception e) {
+                    throw new GradleException("Cannot download/verify ${filename}. Download ${url} into Downloads or the project root, then build again.", e)
+                } finally { partial.delete() }
+            }
+            new java.util.zip.ZipFile(archive).withCloseable { zip ->
+                File dest = new File(generatedJni.get().asFile, abi + '/libxray_exec.so')
+                dest.parentFile.mkdirs()
+                def executable = zip.getEntry('xray')
+                if (executable == null || executable.size <= 0) throw new GradleException('Missing xray binary in ' + filename)
+                zip.getInputStream(executable).withCloseable { input -> dest.withOutputStream { output -> output << input } }
+                dest.setExecutable(true, false)
+                logger.lifecycle("Xray ${abi}: verified and prepared")
+            }
+        }
+    }
+}
+tasks.configureEach { t ->
+    if (t.name == 'preBuild' || (t.name.startsWith('merge') && (t.name.endsWith('JniLibFolders') || t.name.endsWith('Assets')))) {
+        t.dependsOn(prepareXray)
+    }
+}

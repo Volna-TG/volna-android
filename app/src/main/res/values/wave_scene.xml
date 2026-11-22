@@ -1,0 +1,11 @@
+<resources>
+    <style name="VolnaWaveTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#06101F</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:navigationBarColor">#06101F</item>
+        <item name="android:statusBarColor">#06101F</item>
+    </style>
+</resources>

@@ -1,0 +1,20 @@
+<resources>
+    <style name="VolnaDialog" parent="@android:style/Theme.Material.Light.Dialog.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:colorAccent">#285CE8</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+    <style name="VolnaDialogDark" parent="@android:style/Theme.Material.Dialog.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:colorAccent">#8CB5FF</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+    <style name="VolnaDialogMotion">
+        <item name="android:windowEnterAnimation">@anim/volna_dialog_enter</item>
+        <item name="android:windowExitAnimation">@anim/volna_dialog_exit</item>
+    </style>
+</resources>
